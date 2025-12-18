@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Interactive Tangyuan Feast (Auto-Unlock)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Lato', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+            pointer-events: none;
+            display: flex; flex-direction: column; align-items: center; padding-top: 5vh;
+        }
+        
+        h1 {
+            color: #fff; font-family: 'Cinzel', serif; 
+            font-size: 26px; line-height: 1.4; letter-spacing: 2px; text-align: center;
+            margin: 0; 
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 50px rgba(255, 50, 50, 0.6); 
+            opacity: 1;
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+            to { text-shadow: 0 0 30px rgba(255, 200, 50, 1), 0 0 15px #ff8800; }
+        }
+
+        #status-bar {
+            margin-top: 15px;
+            color: #ffeb3b; font-size: 16px; font-weight: bold;
+            background: rgba(80, 0, 0, 0.7); padding: 8px 20px; border-radius: 20px;
+            border: 2px solid rgba(255, 215, 0, 0.6); opacity: 0; transition: opacity 0.2s;
+            text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            text-shadow: 0 0 5px #ff0000;
+        }
+
+        #mute-indicator {
+            position: fixed; top: 20px; right: 20px; z-index: 999;
+            font-size: 24px; color: #d4af37; opacity: 0; transition: opacity 0.5s;
+            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        #loading {
+            position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%);
+            color: #fff; font-family: 'Cinzel', serif; z-index: 20; font-size: 12px;
+            text-align: center; width: 100%; text-shadow: 0 0 5px #000;
+        }
+
+        /* --- 🔧 修复部分：全新的自适应布局 --- */
+        .instruction-container {
+            position: absolute; 
+            bottom: 40px; 
+            width: 95%; 
+            display: flex;
+            flex-wrap: wrap; /* 允许换行 */
+            justify-content: center;
+            gap: 8px; /* 标签之间的间距 */
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+
+        .inst-tag {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 11px;
+            white-space: nowrap; /* 保证单个标签内不换行 */
+            text-shadow: 0 0 2px black;
+            backdrop-filter: blur(4px);
+        }
+        .inst-tag b { color: #ffd700; font-weight: 800; }
+        
+        /* 针对特别小的屏幕优化 */
+        @media (max-width: 360px) {
+            .inst-tag { font-size: 10px; padding: 4px 8px; }
+        }
+
+        #photo-overlay {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            width: 300px; height: 400px;
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 215, 0, 0.8); border-radius: 15px;
+            box-shadow: 0 0 80px rgba(255, 50, 50, 0.6);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100; pointer-events: none;
+        }
+        #photo-overlay.active { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        #photo-overlay img { width: 95%; height: 95%; object-fit: contain; border-radius: 10px; }
+    </style>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<audio id="bgm" loop preload="auto">
+    <source src="music.mp3" type="audio/mpeg">
+</audio>
+<audio id="sfx-chime" preload="auto"><source src="" type="audio/mpeg"></audio>
+<audio id="sfx-boom" preload="auto"><source src="" type="audio/mpeg"></audio>
+
+    <div id="mute-indicator">🔇</div>
+    <div id="loading">✨ Preparing Feast...<br><span style="font-size:10px; opacity:0.7">Please allow camera</span></div>
+
+    <div id="ui-layer">
+        <h1>Duplex Ventures<br>Winter Feast<br>冬至团圆</h1>
+        <div id="status-bar">Detecting...</div>
+        <div id="photo-overlay"><img id="card-image" src="" alt="Card"></div>
+        
+        <div class="instruction-container">
+            <div class="inst-tag">✊ <b>Clench</b>: Charge</div>
+            <div class="inst-tag">🖐 <b>Open</b>: Move & Boom</div>
+            <div class="inst-tag">👍 <b>Thumb</b>: <b>WARMTH</b></div>
+            <div class="inst-tag">✌️ <b>Peace</b>: Snow</div>
+            <div class="inst-tag">👌 <b>Pinch</b>: Card</div>
+        </div>
+    </div>
+
+    <video class="input_video" playsinline webkit-playsinline muted autoplay></video>
+    <div id="canvas-container"></div>
+
+<script>
+    // ==========================================
+    // AUDIO UNLOCK
+    // ==========================================
+    const bgm = document.getElementById('bgm');
+    const sfxChime = document.getElementById('sfx-chime');
+    const sfxBoom = document.getElementById('sfx-boom');
+    const muteIndicator = document.getElementById('mute-indicator');
+    
+    bgm.volume = 0.4;
+
+    function playAudio() {
+        bgm.play().then(() => {
+            muteIndicator.style.opacity = 0;
+            document.removeEventListener('click', playAudio);
+            document.removeEventListener('touchstart', playAudio);
+        }).catch(error => {
+            console.log("Autoplay blocked, waiting for touch.");
+            muteIndicator.style.opacity = 1;
+        });
+    }
+    window.addEventListener('load', playAudio);
+    document.addEventListener('click', playAudio);
+    document.addEventListener('touchstart', playAudio);
+    document.addEventListener("WeixinJSBridgeReady", function () { bgm.play(); muteIndicator.style.opacity = 0; }, false);
+
+    // --------------------------------------------------------
+    // GENERATE CARD IMAGE (Canvas 2D)
+    // --------------------------------------------------------
+    function generateCard() {
+        const cvs = document.createElement('canvas'); cvs.width = 600; cvs.height = 800;
+        const ctx = cvs.getContext('2d');
+        const grad = ctx.createLinearGradient(0,0,0,800); grad.addColorStop(0, '#800000'); grad.addColorStop(1, '#200000');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, 600, 800);
+        
+        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 15; ctx.strokeRect(20, 20, 560, 760); ctx.lineWidth = 2; ctx.strokeRect(35, 35, 530, 730);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10;
+        
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 50px serif'; ctx.fillText('Duplex Ventures', 300, 240);
+        ctx.fillStyle = '#FFF'; ctx.font = 'italic 40px serif'; ctx.fillText('Wishes You', 300, 320);
+        ctx.fillStyle = '#FFC0CB'; ctx.font = 'bold 80px "Microsoft YaHei", sans-serif'; ctx.fillText('冬至安康', 300, 420);
+        ctx.fillStyle = '#FFF'; ctx.font = '30px serif'; ctx.fillText('Happy Winter Solstice', 300, 500);
+        ctx.fillStyle = '#FFF'; ctx.font = '40px serif'; ctx.fillText('🥄', 300, 160); ctx.fillText('🔥', 300, 580);
+        return cvs.toDataURL();
+    }
+    document.getElementById('card-image').src = generateCard();
+
+    // ==========================================
+    // 1. THREE.JS SETUP
+    // ==========================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020205); 
+    scene.fog = new THREE.FogExp2(0x020205, 0.0005);
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 3000);
+    camera.position.set(0, 220, 450); camera.lookAt(0, 50, 0); 
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); 
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    function createSuperGlowTexture() {
+        const size = 64; const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d'); const c = size / 2;
+        const g = ctx.createRadialGradient(c, c, 0, c, c, c);
+        g.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        g.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)');
+        g.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');
+        g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c, c, c, 0, 2 * Math.PI); ctx.fill();
+        return new THREE.Texture(canvas);
+    }
+    const particleTexture = createSuperGlowTexture();
+    particleTexture.needsUpdate = true;
+
+    const mainGroup = new THREE.Group(); mainGroup.position.y = 50; scene.add(mainGroup);
+    
+    const isMobile = window.innerWidth < 768;
+    const particleCount = isMobile ? 9000 : 16000; 
+    
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const initialPositions = new Float32Array(particleCount * 3);
+    const scatterDirs = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const originalColors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount); 
+    const blinkOffsets = new Float32Array(particleCount);
+    const blinkSpeeds = new Float32Array(particleCount);
+
+    // === COLORS ===
+    const colWhite = new THREE.Color(0xffffff);
+    const colPink = new THREE.Color(0xff88aa); 
+    const colGreen = new THREE.Color(0x66ff66); 
+    const colYellow = new THREE.Color(0xffcc00); 
+    const colPurple = new THREE.Color(0xff66ff); 
+    const colSesame = new THREE.Color(0x444444);
+
+    const bowlRadius = 160;
+    
+    const balls = [
+        { x: 0,   y: 10, z: 0,   r: 35, c: colWhite },
+        { x: 50,  y: 20, z: 30,  r: 30, c: colPink },
+        { x: -50, y: 15, z: 40,  r: 30, c: colGreen },
+        { x: 40,  y: 10, z: -40, r: 30, c: colYellow },
+        { x: -30, y: 25, z: -50, r: 30, c: colPurple },
+        { x: 0,   y: 5,  z: 60,  r: 28, c: colSesame } 
+    ];
+
+    for (let i = 0; i < particleCount; i++) {
+        let x, y, z, c;
+        let isBowl = false;
+        let pSize = isMobile ? 4.0 : 3.0;
+
+        if (i < particleCount * 0.35) { // Bowl
+            isBowl = true;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI * 0.5 + Math.PI * 0.5;
+            const r = bowlRadius + (Math.random() - 0.5) * 5;
+            x = r * Math.sin(phi) * Math.cos(theta);
+            y = r * Math.cos(phi) + 40;
+            z = r * Math.sin(phi) * Math.sin(theta);
+            c = (Math.random() > 0.9) ? new THREE.Color(0x00ccff) : new THREE.Color(0xeeeeee); 
+        } 
+        else if (i < particleCount * 0.45) { // Spoon
+            isBowl = true; 
+            c = new THREE.Color(0xffffff); 
+            if (Math.random() < 0.65) {
+                const t = Math.random();
+                const startX = 130, startY = 110, startZ = 90; 
+                const endX = 50, endY = 40, endZ = 30;       
+                x = startX + (endX - startX) * t + (Math.random()-0.5)*5;
+                y = startY + (endY - startY) * t + (Math.random()-0.5)*2;
+                z = startZ + (endZ - startZ) * t + (Math.random()-0.5)*5;
+            } else {
+                const centerX = 40, centerY = 35, centerZ = 25;
+                const rx = 20, ry = 8, rz = 25; 
+                const u = Math.random() * Math.PI;
+                const v = Math.random() * Math.PI;
+                x = centerX + rx * Math.cos(u) * Math.sin(v);
+                y = centerY + ry * Math.cos(v) - 5; 
+                z = centerZ + rz * Math.sin(u) * Math.sin(v);
+            }
+        }
+        else { // Balls
+            const ball = balls[Math.floor(Math.random() * balls.length)];
+            const u = Math.random();
+            const v = Math.random();
+            const theta = 2 * Math.PI * u;
+            const phi = Math.acos(2 * v - 1);
+            const r = ball.r + (Math.random() - 0.5) * 3;
+            x = ball.x + r * Math.sin(phi) * Math.cos(theta);
+            y = ball.y + r * Math.sin(phi) * Math.sin(theta);
+            z = ball.z + r * Math.cos(phi);
+            c = ball.c;
+            pSize = isMobile ? 6.0 : 5.0; 
+        }
+
+        initialPositions[i*3]=x; initialPositions[i*3+1]=y; initialPositions[i*3+2]=z;
+        positions[i*3]=x; positions[i*3+1]=y; positions[i*3+2]=z;
+
+        const dx = x; const dy = y - 50; const dz = z;
+        const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        const speed = 400 + Math.random() * 800; 
+        scatterDirs[i*3] = (dx/len) * speed; 
+        scatterDirs[i*3+1] = (dy/len) * speed + 200; 
+        scatterDirs[i*3+2] = (dz/len) * speed;
+
+        originalColors[i*3]=c.r; originalColors[i*3+1]=c.g; originalColors[i*3+2]=c.b;
+        colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+        sizes[i] = pSize;
+
+        blinkOffsets[i] = Math.random() * Math.PI * 2;
+        blinkSpeeds[i] = 1.0 + Math.random() * 2.0; 
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1)); 
+
+    const material = new THREE.PointsMaterial({
+        size: 4.0, vertexColors: true, map: particleTexture,
+        blending: THREE.AdditiveBlending, 
+        depthWrite: false, transparent: true, opacity: 0.95
+    });
+
+    const particles = new THREE.Points(geometry, material);
+    mainGroup.add(particles);
+
+    // Steam
+    const steamGeo = new THREE.BufferGeometry();
+    const steamPos = new Float32Array(300 * 3);
+    for(let i=0; i<300; i++) {
+        steamPos[i*3] = (Math.random()-0.5) * 150; 
+        steamPos[i*3+1] = Math.random() * 100 + 50;
+        steamPos[i*3+2] = (Math.random()-0.5) * 150;
+    }
+    steamGeo.setAttribute('position', new THREE.BufferAttribute(steamPos, 3));
+    const steamMat = new THREE.PointsMaterial({ color: 0xffffff, size: 10, map: particleTexture, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending });
+    const steamSystem = new THREE.Points(steamGeo, steamMat);
+    mainGroup.add(steamSystem);
+
+    // Trail
+    const trailCount = 60;
+    const trailGeo = new THREE.BufferGeometry();
+    const trailPos = new Float32Array(trailCount * 3);
+    const trailColors = new Float32Array(trailCount * 3); 
+    for(let i=0; i<trailCount; i++) { trailPos[i*3]=0; trailPos[i*3+1]=0; trailPos[i*3+2]=0; }
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+    trailGeo.setAttribute('color', new THREE.BufferAttribute(trailColors, 3));
+    const trailMat = new THREE.PointsMaterial({ size: 15, vertexColors: true, map: particleTexture, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+    const trailSystem = new THREE.Points(trailGeo, trailMat);
+    scene.add(trailSystem);
+    let trailHead = 0;
+
+    // Snow
+    const snowCount = 1000;
+    const snowGeo = new THREE.BufferGeometry();
+    const snowPos = new Float32Array(snowCount * 3);
+    const snowVel = new Float32Array(snowCount); 
+    for(let i=0; i<snowCount; i++) {
+        snowPos[i*3] = (Math.random() - 0.5) * 800; snowPos[i*3+1] = Math.random() * 600 + 200; snowPos[i*3+2] = (Math.random() - 0.5) * 600; 
+        snowVel[i] = 1 + Math.random() * 3; 
+    }
+    snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+    const snowSystem = new THREE.Points(snowGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 6, map: particleTexture, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+    scene.add(snowSystem); snowSystem.visible = false; 
+
+    // ==========================================
+    // LOGIC
+    // ==========================================
+    let state = { 
+        isHandDetected: false, handRotation: 0, isPinch: false, scatterFactor: 0, targetFactor: 0,
+        isPeaceSign: false, isThumbsUp: false,
+        handX: 0, handY: 0, handZ: 0 
+    };
+    let hasPlayedBoom = false;
+    let hasPlayedChime = false;
+    let lastScatterFactor = 0; 
+    let flashIntensity = 0;    
+    let explosionScale = 1.0;
+
+    const photoOverlay = document.getElementById('photo-overlay');
+    const videoElement = document.getElementsByClassName('input_video')[0];
+    const statusBar = document.getElementById('status-bar');
+    
+    const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+    
+    hands.onResults(results => {
+        document.getElementById('loading').style.display = 'none';
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            state.isHandDetected = true;
+            const lm = results.multiHandLandmarks[0];
+            const p5 = lm[5]; const p17 = lm[17];
+            state.handRotation = Math.atan2(p17.y - p5.y, p17.x - p5.x);
+            
+            const wrist = lm[0]; const middleMCP = lm[9]; const palmSize = Math.hypot(middleMCP.x - wrist.x, middleMCP.y - wrist.y);
+            const tipsAvg = (Math.hypot(lm[8].x-wrist.x, lm[8].y-wrist.y) + Math.hypot(lm[12].x-wrist.x, lm[12].y-wrist.y) + Math.hypot(lm[16].x-wrist.x, lm[16].y-wrist.y)) / 3;
+            state.targetFactor = Math.max(0, Math.min(1, (tipsAvg / palmSize - 1.2) / 1.0));
+            
+            const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
+            state.isPinch = (pinchDist < 0.05 * (palmSize * 10) && state.targetFactor > 0.3);
+
+            const screenX = (0.5 - lm[8].x) * 800; const screenY = (0.5 - lm[8].y) * 600; 
+            state.handX = screenX; state.handY = screenY; state.handZ = 150; 
+
+            const iTip = Math.hypot(lm[8].x - wrist.x, lm[8].y - wrist.y);
+            const mTip = Math.hypot(lm[12].x - wrist.x, lm[12].y - wrist.y);
+            const rTip = Math.hypot(lm[16].x - wrist.x, lm[16].y - wrist.y);
+            const pTip = Math.hypot(lm[20].x - wrist.x, lm[20].y - wrist.y);
+
+            state.isPeaceSign = (iTip > palmSize * 1.5 && mTip > palmSize * 1.5 && rTip < palmSize * 1.5 && pTip < palmSize * 1.5);
+            const tTipDist = Math.hypot(lm[4].x - lm[9].x, lm[4].y - lm[9].y); 
+            state.isThumbsUp = (tTipDist > palmSize && iTip < palmSize * 1.5 && mTip < palmSize * 1.5);
+        } else {
+            state.isHandDetected = false; state.isPinch = false; state.targetFactor = 0; state.isPeaceSign = false; state.isThumbsUp = false;
+        }
+    });
+
+    let frameCounter = 0;
+    const cameraUtils = new Camera(videoElement, { 
+        onFrame: async () => { frameCounter++; if (frameCounter % 3 === 0) await hands.send({image: videoElement}); }, 
+        width: 640, height: 480 
+    });
+    cameraUtils.start();
+
+    function animate() {
+        requestAnimationFrame(animate);
+        const time = Date.now() * 0.003; 
+
+        const animSpeed = (state.targetFactor < state.scatterFactor) ? 0.1 : 0.03;
+        state.scatterFactor += (state.targetFactor - state.scatterFactor) * animSpeed;
+        const t = state.scatterFactor;
+        
+        if (t - lastScatterFactor > 0.1) { 
+            flashIntensity = 5.0; 
+            explosionScale = 1.5; 
+        }
+        lastScatterFactor = t;
+        flashIntensity *= 0.92; 
+        explosionScale += (1.0 - explosionScale) * 0.1; 
+
+        const explosionProgress = 1 - Math.pow(1 - t, 3);
+        const gravityDrop = 120 * t * t; 
+
+        if (t > 0.6 && !hasPlayedBoom) { sfxBoom.currentTime=0; sfxBoom.play().catch(()=>{}); hasPlayedBoom = true; }
+        if (t < 0.2) { hasPlayedBoom = false; }
+        if (state.isPinch && !hasPlayedChime) { sfxChime.currentTime=0; sfxChime.play().catch(()=>{}); hasPlayedChime = true; }
+        if (!state.isPinch) { hasPlayedChime = false; }
+
+        const posAttr = geometry.attributes.position;
+        const colAttr = geometry.attributes.color;
+        
+        if (state.isHandDetected) {
+            statusBar.style.opacity = 1;
+            // UI Update
+            if (state.isPinch) statusBar.innerText = "OPENING CARD";
+            else if (state.isPeaceSign) statusBar.innerText = "❄️ SNOW MODE ❄️";
+            else if (state.isThumbsUp) {
+                statusBar.innerText = "🔥 SUPER WARMTH ON 🔥";
+                statusBar.style.color = "#ffaa00";
+            }
+            else if (t < 0.2 && state.targetFactor < 0.3) {
+                 statusBar.innerText = "✊ CLENCH FIST TO CHARGE!";
+                 statusBar.style.color = "#ff3333";
+            }
+            else if (t > 0.5) {
+                statusBar.innerText = "💥 BOOM !!!";
+                statusBar.style.color = "#ffff00";
+            }
+            else {
+                statusBar.innerText = "🖐 OPEN HAND TO MOVE";
+                statusBar.style.color = "#00ffcc";
+            }
+        } else {
+            statusBar.style.opacity = 0;
+        }
+
+        const trailC = trailGeo.attributes.color.array;
+        for(let i=0; i<trailCount; i++) { trailC[i*3] *= 0.85; trailC[i*3+1] *= 0.85; trailC[i*3+2] *= 0.85; }
+        if (state.isHandDetected) {
+            const tp = trailGeo.attributes.position.array;
+            tp[trailHead * 3] = state.handX; tp[trailHead * 3 + 1] = state.handY; tp[trailHead * 3 + 2] = state.handZ; 
+            trailC[trailHead * 3] = 1.0; trailC[trailHead * 3 + 1] = 1.0; trailC[trailHead * 3 + 2] = 1.0; 
+            trailHead = (trailHead + 1) % trailCount;
+        }
+        trailGeo.attributes.position.needsUpdate = true; trailGeo.attributes.color.needsUpdate = true;
+
+        for (let i = 0; i < particleCount; i++) {
+            const ix = i * 3; const iy = i * 3 + 1; const iz = i * 3 + 2;
+            let ox = initialPositions[ix]; let oy = initialPositions[iy]; let oz = initialPositions[iz];
+            
+            let tx = ox + scatterDirs[ix] * explosionProgress * explosionScale;
+            let ty = oy + scatterDirs[iy] * explosionProgress * explosionScale - gravityDrop;
+            let tz = oz + scatterDirs[iz] * explosionProgress * explosionScale;
+
+            if (state.isHandDetected && state.scatterFactor < 0.2) {
+                const dx = tx - state.handX; const dy = ty - state.handY; const dz = tz - state.handZ;
+                const distSq = dx*dx + dy*dy + dz*dz;
+                if (distSq < 8000) { 
+                    const force = (8000 - distSq) / 8000;
+                    tx += dx * force * 0.8; ty += dy * force * 0.8; tz += dz * force * 0.8;
+                }
+            }
+            posAttr.array[ix] = tx; posAttr.array[iy] = ty; posAttr.array[iz] = tz;
+
+            let baseR = originalColors[ix];
+            let baseG = originalColors[iy];
+            let baseB = originalColors[iz];
+
+            if (t > 0.1) {
+                baseR = Math.pow(baseR, 0.5) * 1.2;
+                baseG = Math.pow(baseG, 0.5) * 1.2;
+                baseB = Math.pow(baseB, 0.5) * 1.2;
+            }
+
+            if (state.isThumbsUp) {
+                const pulse = 0.2 * Math.sin(time * 10 + ix);
+                colAttr.array[ix] = 1.0 + pulse + flashIntensity; 
+                colAttr.array[iy] = 0.5 + pulse * 0.5 + flashIntensity; 
+                colAttr.array[iz] = 0.0 + flashIntensity; 
+            } else {
+                colAttr.array[ix] = baseR + flashIntensity; 
+                colAttr.array[iy] = baseG + flashIntensity; 
+                colAttr.array[iz] = baseB + flashIntensity;
+            }
+        }
+        posAttr.needsUpdate = true; colAttr.needsUpdate = true; 
+
+        // 🖐️ SMART FOLLOW LOGIC: Only follow if hand is OPEN
+        if (state.isHandDetected && state.targetFactor > 0.4) {
+             mainGroup.position.x += (state.handX - mainGroup.position.x) * 0.1;
+             mainGroup.position.y += ((state.handY + 50) - mainGroup.position.y) * 0.1;
+        } else {
+             mainGroup.position.x += (0 - mainGroup.position.x) * 0.05;
+             mainGroup.position.y += (50 - mainGroup.position.y) * 0.05;
+        }
+
+        if (state.scatterFactor < 0.8) {
+            if (state.isHandDetected) mainGroup.rotation.y += (-state.handRotation * 1.5 - mainGroup.rotation.y) * 0.05;
+            else mainGroup.rotation.y += 0.003;
+        }
+
+        const steamPos = steamGeo.attributes.position.array;
+        for(let i=0; i<300; i++) {
+            steamPos[i*3+1] += 0.5; 
+            if(steamPos[i*3+1] > 200) steamPos[i*3+1] = 20; 
+        }
+        steamGeo.attributes.position.needsUpdate = true;
+        steamSystem.visible = (state.scatterFactor < 0.5); 
+        
+        if (state.isThumbsUp) {
+            steamMat.color.setHex(0xffaa00); 
+            steamMat.opacity = 0.5;
+        } else {
+            steamMat.color.setHex(0xffffff); 
+            steamMat.opacity = 0.2;
+        }
+
+        if (state.isPeaceSign) {
+            snowSystem.visible = true;
+            const snowPositions = snowGeo.attributes.position.array;
+            for(let i=0; i<snowCount; i++) {
+                snowPositions[i*3+1] -= snowVel[i];
+                snowPositions[i*3] += Math.sin(time + i) * 0.5;
+                if (snowPositions[i*3+1] < -200) snowPositions[i*3+1] = 600;
+            }
+            snowGeo.attributes.position.needsUpdate = true;
+        } else {
+            snowSystem.visible = false;
+        }
+
+        if (state.isPinch && state.isHandDetected) photoOverlay.classList.add('active');
+        else photoOverlay.classList.remove('active');
+
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+</body>
+</html>
