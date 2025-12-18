@@ -51,15 +51,15 @@
             text-align: center; width: 100%; text-shadow: 0 0 5px #000;
         }
 
-        /* --- 🔧 修复部分：全新的自适应布局 --- */
+        /* ---  --- */
         .instruction-container {
             position: absolute; 
             bottom: 40px; 
             width: 95%; 
             display: flex;
-            flex-wrap: wrap; /* 允许换行 */
+            flex-wrap: wrap; /*  */
             justify-content: center;
-            gap: 8px; /* 标签之间的间距 */
+            gap: 8px; /*  */
             padding-bottom: max(10px, env(safe-area-inset-bottom));
         }
 
@@ -70,13 +70,13 @@
             border-radius: 20px;
             color: rgba(255, 255, 255, 0.9);
             font-size: 11px;
-            white-space: nowrap; /* 保证单个标签内不换行 */
+            white-space: nowrap; /*  */
             text-shadow: 0 0 2px black;
             backdrop-filter: blur(4px);
         }
         .inst-tag b { color: #ffd700; font-weight: 800; }
         
-        /* 针对特别小的屏幕优化 */
+        /*  */
         @media (max-width: 360px) {
             .inst-tag { font-size: 10px; padding: 4px 8px; }
         }
@@ -138,7 +138,7 @@
 
 <script>
     // ==========================================
-    // AUDIO UNLOCK
+    // 
     // ==========================================
     const bgm = document.getElementById('bgm');
     const sfxChime = document.getElementById('sfx-chime');
@@ -163,7 +163,7 @@
     document.addEventListener("WeixinJSBridgeReady", function () { bgm.play(); muteIndicator.style.opacity = 0; }, false);
 
     // --------------------------------------------------------
-    // GENERATE CARD IMAGE (Canvas 2D)
+    // 
     // --------------------------------------------------------
     function generateCard() {
         const cvs = document.createElement('canvas'); cvs.width = 600; cvs.height = 800;
@@ -184,7 +184,7 @@
     document.getElementById('card-image').src = generateCard();
 
     // ==========================================
-    // 1. THREE.JS SETUP
+    // 1. 
     // ==========================================
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
@@ -227,7 +227,7 @@
     const blinkOffsets = new Float32Array(particleCount);
     const blinkSpeeds = new Float32Array(particleCount);
 
-    // === COLORS ===
+    // ===  ===
     const colWhite = new THREE.Color(0xffffff);
     const colPink = new THREE.Color(0xff88aa); 
     const colGreen = new THREE.Color(0x66ff66); 
@@ -251,7 +251,7 @@
         let isBowl = false;
         let pSize = isMobile ? 4.0 : 3.0;
 
-        if (i < particleCount * 0.35) { // Bowl
+        if (i < particleCount * 0.35) { // 
             isBowl = true;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI * 0.5 + Math.PI * 0.5;
@@ -261,7 +261,7 @@
             z = r * Math.sin(phi) * Math.sin(theta);
             c = (Math.random() > 0.9) ? new THREE.Color(0x00ccff) : new THREE.Color(0xeeeeee); 
         } 
-        else if (i < particleCount * 0.45) { // Spoon
+        else if (i < particleCount * 0.45) { // 
             isBowl = true; 
             c = new THREE.Color(0xffffff); 
             if (Math.random() < 0.65) {
@@ -281,7 +281,7 @@
                 z = centerZ + rz * Math.sin(u) * Math.sin(v);
             }
         }
-        else { // Balls
+        else { // 
             const ball = balls[Math.floor(Math.random() * balls.length)];
             const u = Math.random();
             const v = Math.random();
@@ -326,7 +326,7 @@
     const particles = new THREE.Points(geometry, material);
     mainGroup.add(particles);
 
-    // Steam
+    // 
     const steamGeo = new THREE.BufferGeometry();
     const steamPos = new Float32Array(300 * 3);
     for(let i=0; i<300; i++) {
@@ -339,7 +339,7 @@
     const steamSystem = new THREE.Points(steamGeo, steamMat);
     mainGroup.add(steamSystem);
 
-    // Trail
+    // 
     const trailCount = 60;
     const trailGeo = new THREE.BufferGeometry();
     const trailPos = new Float32Array(trailCount * 3);
@@ -352,7 +352,7 @@
     scene.add(trailSystem);
     let trailHead = 0;
 
-    // Snow
+    // 
     const snowCount = 1000;
     const snowGeo = new THREE.BufferGeometry();
     const snowPos = new Float32Array(snowCount * 3);
@@ -366,7 +366,7 @@
     scene.add(snowSystem); snowSystem.visible = false; 
 
     // ==========================================
-    // LOGIC
+    // 
     // ==========================================
     let state = { 
         isHandDetected: false, handRotation: 0, isPinch: false, scatterFactor: 0, targetFactor: 0,
@@ -453,7 +453,7 @@
         
         if (state.isHandDetected) {
             statusBar.style.opacity = 1;
-            // UI Update
+            // 
             if (state.isPinch) statusBar.innerText = "OPENING CARD";
             else if (state.isPeaceSign) statusBar.innerText = "❄️ SNOW MODE ❄️";
             else if (state.isThumbsUp) {
@@ -527,7 +527,7 @@
         }
         posAttr.needsUpdate = true; colAttr.needsUpdate = true; 
 
-        // 🖐️ SMART FOLLOW LOGIC: Only follow if hand is OPEN
+        // 🖐️ 
         if (state.isHandDetected && state.targetFactor > 0.4) {
              mainGroup.position.x += (state.handX - mainGroup.position.x) * 0.1;
              mainGroup.position.y += ((state.handY + 50) - mainGroup.position.y) * 0.1;
