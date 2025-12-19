@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Interactive Tangyuan Feast (Auto-Unlock)</title>
+    <title>5-Card Tangyuan Feast (Auto-Unlock)</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Lato', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -51,15 +51,14 @@
             text-align: center; width: 100%; text-shadow: 0 0 5px #000;
         }
 
-        /* ---  --- */
         .instruction-container {
             position: absolute; 
             bottom: 40px; 
             width: 95%; 
             display: flex;
-            flex-wrap: wrap; /*  */
+            flex-wrap: wrap; 
             justify-content: center;
-            gap: 8px; /*  */
+            gap: 8px; 
             padding-bottom: max(10px, env(safe-area-inset-bottom));
         }
 
@@ -70,13 +69,12 @@
             border-radius: 20px;
             color: rgba(255, 255, 255, 0.9);
             font-size: 11px;
-            white-space: nowrap; /*  */
+            white-space: nowrap; 
             text-shadow: 0 0 2px black;
             backdrop-filter: blur(4px);
         }
         .inst-tag b { color: #ffd700; font-weight: 800; }
         
-        /*  */
         @media (max-width: 360px) {
             .inst-tag { font-size: 10px; padding: 4px 8px; }
         }
@@ -94,6 +92,13 @@
         }
         #photo-overlay.active { opacity: 1; transform: translate(-50%, -50%) scale(1); }
         #photo-overlay img { width: 95%; height: 95%; object-fit: contain; border-radius: 10px; }
+        
+        /* Debug / Zone indicator text (optional) */
+        #zone-indicator {
+            position: absolute; top: 80px; width: 100%; text-align: center;
+            color: rgba(255,255,255,0.5); font-size: 10px; font-family: monospace;
+            pointer-events: none;
+        }
     </style>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -107,29 +112,23 @@
 <audio id="bgm" loop preload="auto">
     <source src="music.mp3" type="audio/mpeg">
 </audio>
-
-<audio id="sfx-chime" preload="auto">
-    <source src="" type="audio/mpeg">
-</audio>
-
-<audio id="sfx-boom" preload="auto">
-    <source src="" type="audio/mpeg">
-</audio>
+<audio id="sfx-chime" preload="auto"><source src="" type="audio/mpeg"></audio>
+<audio id="sfx-boom" preload="auto"><source src="" type="audio/mpeg"></audio>
 
     <div id="mute-indicator">🔇</div>
-    <div id="loading">✨ Preparing Feast...<br><span style="font-size:10px; opacity:0.7">Please allow camera</span></div>
+    <div id="loading">✨ Preparing 5 Blessings...<br><span style="font-size:10px; opacity:0.7">Please allow camera</span></div>
 
     <div id="ui-layer">
-        <h1>Duplex Ventures<br>Wishing You<br>冬至快乐</h1>
+        <h1>Duplex Ventures<br>Winter Feast<br>冬至五福</h1>
+        <div id="zone-indicator">Zone: Center</div>
         <div id="status-bar">Detecting...</div>
         <div id="photo-overlay"><img id="card-image" src="" alt="Card"></div>
         
         <div class="instruction-container">
             <div class="inst-tag">✊ <b>Clench</b>: Charge</div>
-            <div class="inst-tag">🖐 <b>Open</b>: Move & Boom</div>
+            <div class="inst-tag">🖐 <b>Open & Move</b>: Select Zone</div>
+            <div class="inst-tag">👌 <b>Pinch</b>: Open Card</div>
             <div class="inst-tag">👍 <b>Thumb</b>: <b>WARMTH</b></div>
-            <div class="inst-tag">✌️ <b>Peace</b>: Snow</div>
-            <div class="inst-tag">👌 <b>Pinch</b>: Card</div>
         </div>
     </div>
 
@@ -138,7 +137,7 @@
 
 <script>
     // ==========================================
-    // 
+    // AUDIO UNLOCK
     // ==========================================
     const bgm = document.getElementById('bgm');
     const sfxChime = document.getElementById('sfx-chime');
@@ -163,28 +162,41 @@
     document.addEventListener("WeixinJSBridgeReady", function () { bgm.play(); muteIndicator.style.opacity = 0; }, false);
 
     // --------------------------------------------------------
-    // 
+    // GENERATE 5 DIFFERENT CARDS
     // --------------------------------------------------------
-    function generateCard() {
+    // Helper function to draw card
+    function drawCardCanvas(title, subtitle, icon, mainColor, bgColor1, bgColor2) {
         const cvs = document.createElement('canvas'); cvs.width = 600; cvs.height = 800;
         const ctx = cvs.getContext('2d');
-        const grad = ctx.createLinearGradient(0,0,0,800); grad.addColorStop(0, '#800000'); grad.addColorStop(1, '#200000');
+        const grad = ctx.createLinearGradient(0,0,0,800); grad.addColorStop(0, bgColor1); grad.addColorStop(1, bgColor2);
         ctx.fillStyle = grad; ctx.fillRect(0, 0, 600, 800);
         
-        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 15; ctx.strokeRect(20, 20, 560, 760); ctx.lineWidth = 2; ctx.strokeRect(35, 35, 530, 730);
+        ctx.strokeStyle = mainColor; ctx.lineWidth = 15; ctx.strokeRect(20, 20, 560, 760); ctx.lineWidth = 2; ctx.strokeRect(35, 35, 530, 730);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10;
         
-        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 50px serif'; ctx.fillText('Duplex Ventures', 300, 240);
+        ctx.fillStyle = mainColor; ctx.font = 'bold 50px serif'; ctx.fillText('Duplex Ventures', 300, 240);
         ctx.fillStyle = '#FFF'; ctx.font = 'italic 40px serif'; ctx.fillText('Wishes You', 300, 320);
-        ctx.fillStyle = '#FFC0CB'; ctx.font = 'bold 80px "Microsoft YaHei", sans-serif'; ctx.fillText('冬至安康', 300, 420);
-        ctx.fillStyle = '#FFF'; ctx.font = '30px serif'; ctx.fillText('Happy Winter Solstice', 300, 500);
-        ctx.fillStyle = '#FFF'; ctx.font = '40px serif'; ctx.fillText('🥄', 300, 160); ctx.fillText('🔥', 300, 580);
+        ctx.fillStyle = '#FFF'; ctx.font = 'bold 80px "Microsoft YaHei", sans-serif'; ctx.fillText(title, 300, 420);
+        ctx.fillStyle = '#EEE'; ctx.font = '30px serif'; ctx.fillText(subtitle, 300, 500);
+        ctx.fillStyle = '#FFF'; ctx.font = '60px serif'; ctx.fillText(icon, 300, 600);
+        
         return cvs.toDataURL();
     }
-    document.getElementById('card-image').src = generateCard();
+
+    // Pre-generate 5 cards
+    const cardImages = [
+        drawCardCanvas('冬至团圆', 'Happy Winter Solstice', '🥣', '#FFD700', '#800000', '#200000'), // 0: Center (Red)
+        drawCardCanvas('恭喜发财', 'Wealth & Prosperity', '💰', '#FFD700', '#DAA520', '#554400'),   // 1: Top Left (Gold)
+        drawCardCanvas('身体健康', 'Good Health', '🍎', '#90EE90', '#228B22', '#004400'),           // 2: Top Right (Green)
+        drawCardCanvas('甜蜜良缘', 'Sweet Love', '🌸', '#FFB7C5', '#FF69B4', '#8B008B'),            // 3: Bottom Left (Pink)
+        drawCardCanvas('步步高升', 'Career Success', '🚀', '#00BFFF', '#4169E1', '#000080')         // 4: Bottom Right (Blue)
+    ];
+
+    // Initialize with center card
+    document.getElementById('card-image').src = cardImages[0];
 
     // ==========================================
-    // 1. 
+    // 1. THREE.JS SETUP
     // ==========================================
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
@@ -227,7 +239,7 @@
     const blinkOffsets = new Float32Array(particleCount);
     const blinkSpeeds = new Float32Array(particleCount);
 
-    // ===  ===
+    // === COLORS ===
     const colWhite = new THREE.Color(0xffffff);
     const colPink = new THREE.Color(0xff88aa); 
     const colGreen = new THREE.Color(0x66ff66); 
@@ -251,7 +263,7 @@
         let isBowl = false;
         let pSize = isMobile ? 4.0 : 3.0;
 
-        if (i < particleCount * 0.35) { // 
+        if (i < particleCount * 0.35) { // Bowl
             isBowl = true;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI * 0.5 + Math.PI * 0.5;
@@ -261,7 +273,7 @@
             z = r * Math.sin(phi) * Math.sin(theta);
             c = (Math.random() > 0.9) ? new THREE.Color(0x00ccff) : new THREE.Color(0xeeeeee); 
         } 
-        else if (i < particleCount * 0.45) { // 
+        else if (i < particleCount * 0.45) { // Spoon
             isBowl = true; 
             c = new THREE.Color(0xffffff); 
             if (Math.random() < 0.65) {
@@ -281,7 +293,7 @@
                 z = centerZ + rz * Math.sin(u) * Math.sin(v);
             }
         }
-        else { // 
+        else { // Balls
             const ball = balls[Math.floor(Math.random() * balls.length)];
             const u = Math.random();
             const v = Math.random();
@@ -326,7 +338,7 @@
     const particles = new THREE.Points(geometry, material);
     mainGroup.add(particles);
 
-    // 
+    // Steam
     const steamGeo = new THREE.BufferGeometry();
     const steamPos = new Float32Array(300 * 3);
     for(let i=0; i<300; i++) {
@@ -339,7 +351,7 @@
     const steamSystem = new THREE.Points(steamGeo, steamMat);
     mainGroup.add(steamSystem);
 
-    // 
+    // Trail
     const trailCount = 60;
     const trailGeo = new THREE.BufferGeometry();
     const trailPos = new Float32Array(trailCount * 3);
@@ -352,7 +364,7 @@
     scene.add(trailSystem);
     let trailHead = 0;
 
-    // 
+    // Snow
     const snowCount = 1000;
     const snowGeo = new THREE.BufferGeometry();
     const snowPos = new Float32Array(snowCount * 3);
@@ -366,7 +378,7 @@
     scene.add(snowSystem); snowSystem.visible = false; 
 
     // ==========================================
-    // 
+    // LOGIC
     // ==========================================
     let state = { 
         isHandDetected: false, handRotation: 0, isPinch: false, scatterFactor: 0, targetFactor: 0,
@@ -378,10 +390,12 @@
     let lastScatterFactor = 0; 
     let flashIntensity = 0;    
     let explosionScale = 1.0;
+    let currentZone = 0; // 0:Center, 1:TL, 2:TR, 3:BL, 4:BR
 
     const photoOverlay = document.getElementById('photo-overlay');
     const videoElement = document.getElementsByClassName('input_video')[0];
     const statusBar = document.getElementById('status-bar');
+    const zoneIndicator = document.getElementById('zone-indicator');
     
     const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
     hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
@@ -401,7 +415,9 @@
             const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
             state.isPinch = (pinchDist < 0.05 * (palmSize * 10) && state.targetFactor > 0.3);
 
-            const screenX = (0.5 - lm[8].x) * 800; const screenY = (0.5 - lm[8].y) * 600; 
+            // ScreenX/Y are approximate pixel coords from center-ish (handX range -400 to 400, Y -300 to 300)
+            const screenX = (0.5 - lm[8].x) * 800; 
+            const screenY = (0.5 - lm[8].y) * 600; 
             state.handX = screenX; state.handY = screenY; state.handZ = 150; 
 
             const iTip = Math.hypot(lm[8].x - wrist.x, lm[8].y - wrist.y);
@@ -453,8 +469,23 @@
         
         if (state.isHandDetected) {
             statusBar.style.opacity = 1;
-            // 
-            if (state.isPinch) statusBar.innerText = "OPENING CARD";
+            
+            // --- ZONE LOGIC ---
+            // Thresholds for zones
+            let zoneName = "CENTER (团圆)";
+            currentZone = 0; // Default Center
+            if (state.handY > 100) { // Top (Y is inverted in typical screen coords but check ThreeJS logic)
+                // In ThreeJS here, Y up is positive.
+                if (state.handX < -100) { currentZone = 1; zoneName = "Top Left (暴富)"; }
+                else if (state.handX > 100) { currentZone = 2; zoneName = "Top Right (健康)"; }
+            } else if (state.handY < -100) { // Bottom
+                if (state.handX < -100) { currentZone = 3; zoneName = "Bottom Left (桃花)"; }
+                else if (state.handX > 100) { currentZone = 4; zoneName = "Bottom Right (事业)"; }
+            }
+            zoneIndicator.innerText = "Target: " + zoneName;
+
+            // UI Update
+            if (state.isPinch) statusBar.innerText = "OPENING: " + zoneName;
             else if (state.isPeaceSign) statusBar.innerText = "❄️ SNOW MODE ❄️";
             else if (state.isThumbsUp) {
                 statusBar.innerText = "🔥 SUPER WARMTH ON 🔥";
@@ -474,6 +505,7 @@
             }
         } else {
             statusBar.style.opacity = 0;
+            zoneIndicator.innerText = "";
         }
 
         const trailC = trailGeo.attributes.color.array;
@@ -527,7 +559,7 @@
         }
         posAttr.needsUpdate = true; colAttr.needsUpdate = true; 
 
-        // 🖐️ 
+        // 🖐️ SMART FOLLOW LOGIC
         if (state.isHandDetected && state.targetFactor > 0.4) {
              mainGroup.position.x += (state.handX - mainGroup.position.x) * 0.1;
              mainGroup.position.y += ((state.handY + 50) - mainGroup.position.y) * 0.1;
@@ -570,8 +602,15 @@
             snowSystem.visible = false;
         }
 
-        if (state.isPinch && state.isHandDetected) photoOverlay.classList.add('active');
-        else photoOverlay.classList.remove('active');
+        // --- CARD OPENING LOGIC ---
+        if (state.isPinch && state.isHandDetected) {
+            // Change card image based on Current Zone
+            document.getElementById('card-image').src = cardImages[currentZone];
+            photoOverlay.classList.add('active');
+        }
+        else {
+            photoOverlay.classList.remove('active');
+        }
 
         renderer.render(scene, camera);
     }
