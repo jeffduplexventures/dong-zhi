@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>5-Blessings Tangyuan (Visual Guides)</title>
+    <title>Interactive Tangyuan Feast (Auto-Unlock)</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300&display=swap" rel="stylesheet">
     <style>
         body { margin: 0; overflow: hidden; background-color: #020205; font-family: 'Lato', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -51,56 +51,35 @@
             text-align: center; width: 100%; text-shadow: 0 0 5px #000;
         }
 
-        /* --- 新增：区域标记样式 --- */
-        #zone-markers {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 5;
-        }
-        .zone-marker {
-            position: absolute;
-            width: 80px; height: 80px;
-            border-radius: 50%;
-            border: 1px dashed rgba(255, 255, 255, 0.15);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            text-align: center;
-            color: rgba(255, 255, 255, 0.3);
-            font-family: 'Cinzel', serif; font-size: 10px;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            background: rgba(0,0,0,0.2);
-        }
-        .zone-marker span { font-size: 24px; margin-bottom: 2px; display: block; }
-        
-        /* 激活状态 */
-        .zone-marker.active {
-            border-color: rgba(255, 215, 0, 0.8);
-            background: rgba(255, 215, 0, 0.15);
-            color: #fff;
-            transform: scale(1.15);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-            text-shadow: 0 0 5px rgba(255, 215, 0, 0.8);
-        }
-
-        /* 5个标记的位置 */
-        #marker-1 { top: 15%; left: 10%; }   /* TL: Wealth */
-        #marker-2 { top: 15%; right: 10%; }  /* TR: Health */
-        #marker-3 { bottom: 20%; left: 10%; } /* BL: Love */
-        #marker-4 { bottom: 20%; right: 10%; } /* BR: Career */
-        #marker-0 { top: 50%; left: 50%; transform: translate(-50%, -50%); border-style: solid; border-color: rgba(255,255,255,0.05); } /* Center */
-        #marker-0.active { transform: translate(-50%, -50%) scale(1.15); }
-
+        /* ---  --- */
         .instruction-container {
-            position: absolute; bottom: 40px; width: 95%; 
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; 
+            position: absolute; 
+            bottom: 40px; 
+            width: 95%; 
+            display: flex;
+            flex-wrap: wrap; /*  */
+            justify-content: center;
+            gap: 8px; /*  */
             padding-bottom: max(10px, env(safe-area-inset-bottom));
         }
+
         .inst-tag {
-            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 6px 12px; border-radius: 20px; color: rgba(255, 255, 255, 0.9);
-            font-size: 11px; white-space: nowrap; text-shadow: 0 0 2px black;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 11px;
+            white-space: nowrap; /*  */
+            text-shadow: 0 0 2px black;
             backdrop-filter: blur(4px);
         }
         .inst-tag b { color: #ffd700; font-weight: 800; }
-        @media (max-width: 360px) { .inst-tag { font-size: 10px; padding: 4px 8px; } }
+        
+        /*  */
+        @media (max-width: 360px) {
+            .inst-tag { font-size: 10px; padding: 4px 8px; }
+        }
 
         #photo-overlay {
             position: absolute; top: 50%; left: 50%;
@@ -128,30 +107,29 @@
 <audio id="bgm" loop preload="auto">
     <source src="music.mp3" type="audio/mpeg">
 </audio>
-<audio id="sfx-chime" preload="auto"><source src="" type="audio/mpeg"></audio>
-<audio id="sfx-boom" preload="auto"><source src="" type="audio/mpeg"></audio>
+
+<audio id="sfx-chime" preload="auto">
+    <source src="" type="audio/mpeg">
+</audio>
+
+<audio id="sfx-boom" preload="auto">
+    <source src="" type="audio/mpeg">
+</audio>
 
     <div id="mute-indicator">🔇</div>
-    <div id="loading">✨ Preparing 5 Blessings...<br><span style="font-size:10px; opacity:0.7">Please allow camera</span></div>
+    <div id="loading">✨ Preparing Feast...<br><span style="font-size:10px; opacity:0.7">Please allow camera</span></div>
 
     <div id="ui-layer">
-        <h1>Duplex Ventures<br>Winter Feast<br>冬至五福</h1>
+        <h1>Duplex Ventures<br>Wishing You<br>冬至快乐</h1>
         <div id="status-bar">Detecting...</div>
         <div id="photo-overlay"><img id="card-image" src="" alt="Card"></div>
         
-        <div id="zone-markers">
-            <div class="zone-marker" id="marker-1"><span>💰</span>Wealth</div>
-            <div class="zone-marker" id="marker-2"><span>🍎</span>Health</div>
-            <div class="zone-marker" id="marker-3"><span>🌸</span>Love</div>
-            <div class="zone-marker" id="marker-4"><span>🚀</span>Career</div>
-            <div class="zone-marker" id="marker-0"><span>🥣</span>Center</div>
-        </div>
-
         <div class="instruction-container">
             <div class="inst-tag">✊ <b>Clench</b>: Charge</div>
-            <div class="inst-tag">🖐 <b>Open & Move</b>: Select Zone</div>
-            <div class="inst-tag">👌 <b>Pinch</b>: Open Card</div>
+            <div class="inst-tag">🖐 <b>Open</b>: Move & Boom</div>
             <div class="inst-tag">👍 <b>Thumb</b>: <b>WARMTH</b></div>
+            <div class="inst-tag">✌️ <b>Peace</b>: Snow</div>
+            <div class="inst-tag">👌 <b>Pinch</b>: Card</div>
         </div>
     </div>
 
@@ -160,7 +138,7 @@
 
 <script>
     // ==========================================
-    // AUDIO UNLOCK
+    // 
     // ==========================================
     const bgm = document.getElementById('bgm');
     const sfxChime = document.getElementById('sfx-chime');
@@ -185,36 +163,28 @@
     document.addEventListener("WeixinJSBridgeReady", function () { bgm.play(); muteIndicator.style.opacity = 0; }, false);
 
     // --------------------------------------------------------
-    // GENERATE 5 CARDS
+    // 
     // --------------------------------------------------------
-    function drawCardCanvas(title, subtitle, icon, mainColor, bgColor1, bgColor2) {
+    function generateCard() {
         const cvs = document.createElement('canvas'); cvs.width = 600; cvs.height = 800;
         const ctx = cvs.getContext('2d');
-        const grad = ctx.createLinearGradient(0,0,0,800); grad.addColorStop(0, bgColor1); grad.addColorStop(1, bgColor2);
+        const grad = ctx.createLinearGradient(0,0,0,800); grad.addColorStop(0, '#800000'); grad.addColorStop(1, '#200000');
         ctx.fillStyle = grad; ctx.fillRect(0, 0, 600, 800);
         
-        ctx.strokeStyle = mainColor; ctx.lineWidth = 15; ctx.strokeRect(20, 20, 560, 760); ctx.lineWidth = 2; ctx.strokeRect(35, 35, 530, 730);
+        ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 15; ctx.strokeRect(20, 20, 560, 760); ctx.lineWidth = 2; ctx.strokeRect(35, 35, 530, 730);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 10;
         
-        ctx.fillStyle = mainColor; ctx.font = 'bold 50px serif'; ctx.fillText('Duplex Ventures', 300, 240);
+        ctx.fillStyle = '#FFD700'; ctx.font = 'bold 50px serif'; ctx.fillText('Duplex Ventures', 300, 240);
         ctx.fillStyle = '#FFF'; ctx.font = 'italic 40px serif'; ctx.fillText('Wishes You', 300, 320);
-        ctx.fillStyle = '#FFF'; ctx.font = 'bold 80px "Microsoft YaHei", sans-serif'; ctx.fillText(title, 300, 420);
-        ctx.fillStyle = '#EEE'; ctx.font = '30px serif'; ctx.fillText(subtitle, 300, 500);
-        ctx.fillStyle = '#FFF'; ctx.font = '60px serif'; ctx.fillText(icon, 300, 600);
+        ctx.fillStyle = '#FFC0CB'; ctx.font = 'bold 80px "Microsoft YaHei", sans-serif'; ctx.fillText('冬至安康', 300, 420);
+        ctx.fillStyle = '#FFF'; ctx.font = '30px serif'; ctx.fillText('Happy Winter Solstice', 300, 500);
+        ctx.fillStyle = '#FFF'; ctx.font = '40px serif'; ctx.fillText('🥄', 300, 160); ctx.fillText('🔥', 300, 580);
         return cvs.toDataURL();
     }
-
-    const cardImages = [
-        drawCardCanvas('冬至团圆', 'Happy Winter Solstice', '🥣', '#FFD700', '#800000', '#200000'), 
-        drawCardCanvas('恭喜发财', 'Wealth & Prosperity', '💰', '#FFD700', '#DAA520', '#554400'),   
-        drawCardCanvas('身体健康', 'Good Health', '🍎', '#90EE90', '#228B22', '#004400'),           
-        drawCardCanvas('甜蜜良缘', 'Sweet Love', '🌸', '#FFB7C5', '#FF69B4', '#8B008B'),            
-        drawCardCanvas('步步高升', 'Career Success', '🚀', '#00BFFF', '#4169E1', '#000080')         
-    ];
-    document.getElementById('card-image').src = cardImages[0];
+    document.getElementById('card-image').src = generateCard();
 
     // ==========================================
-    // 1. THREE.JS SETUP
+    // 1. 
     // ==========================================
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
@@ -257,6 +227,7 @@
     const blinkOffsets = new Float32Array(particleCount);
     const blinkSpeeds = new Float32Array(particleCount);
 
+    // ===  ===
     const colWhite = new THREE.Color(0xffffff);
     const colPink = new THREE.Color(0xff88aa); 
     const colGreen = new THREE.Color(0x66ff66); 
@@ -280,7 +251,7 @@
         let isBowl = false;
         let pSize = isMobile ? 4.0 : 3.0;
 
-        if (i < particleCount * 0.35) { // Bowl
+        if (i < particleCount * 0.35) { // 
             isBowl = true;
             const theta = Math.random() * Math.PI * 2;
             const phi = Math.random() * Math.PI * 0.5 + Math.PI * 0.5;
@@ -290,7 +261,7 @@
             z = r * Math.sin(phi) * Math.sin(theta);
             c = (Math.random() > 0.9) ? new THREE.Color(0x00ccff) : new THREE.Color(0xeeeeee); 
         } 
-        else if (i < particleCount * 0.45) { // Spoon
+        else if (i < particleCount * 0.45) { // 
             isBowl = true; 
             c = new THREE.Color(0xffffff); 
             if (Math.random() < 0.65) {
@@ -310,7 +281,7 @@
                 z = centerZ + rz * Math.sin(u) * Math.sin(v);
             }
         }
-        else { // Balls
+        else { // 
             const ball = balls[Math.floor(Math.random() * balls.length)];
             const u = Math.random();
             const v = Math.random();
@@ -355,7 +326,7 @@
     const particles = new THREE.Points(geometry, material);
     mainGroup.add(particles);
 
-    // Steam
+    // 
     const steamGeo = new THREE.BufferGeometry();
     const steamPos = new Float32Array(300 * 3);
     for(let i=0; i<300; i++) {
@@ -368,7 +339,7 @@
     const steamSystem = new THREE.Points(steamGeo, steamMat);
     mainGroup.add(steamSystem);
 
-    // Trail
+    // 
     const trailCount = 60;
     const trailGeo = new THREE.BufferGeometry();
     const trailPos = new Float32Array(trailCount * 3);
@@ -381,7 +352,7 @@
     scene.add(trailSystem);
     let trailHead = 0;
 
-    // Snow
+    // 
     const snowCount = 1000;
     const snowGeo = new THREE.BufferGeometry();
     const snowPos = new Float32Array(snowCount * 3);
@@ -395,7 +366,7 @@
     scene.add(snowSystem); snowSystem.visible = false; 
 
     // ==========================================
-    // LOGIC
+    // 
     // ==========================================
     let state = { 
         isHandDetected: false, handRotation: 0, isPinch: false, scatterFactor: 0, targetFactor: 0,
@@ -407,18 +378,10 @@
     let lastScatterFactor = 0; 
     let flashIntensity = 0;    
     let explosionScale = 1.0;
-    let currentZone = 0; 
 
     const photoOverlay = document.getElementById('photo-overlay');
     const videoElement = document.getElementsByClassName('input_video')[0];
     const statusBar = document.getElementById('status-bar');
-    const markers = [
-        document.getElementById('marker-0'),
-        document.getElementById('marker-1'),
-        document.getElementById('marker-2'),
-        document.getElementById('marker-3'),
-        document.getElementById('marker-4')
-    ];
     
     const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
     hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
@@ -438,8 +401,7 @@
             const pinchDist = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y);
             state.isPinch = (pinchDist < 0.05 * (palmSize * 10) && state.targetFactor > 0.3);
 
-            const screenX = (0.5 - lm[8].x) * 800; 
-            const screenY = (0.5 - lm[8].y) * 600; 
+            const screenX = (0.5 - lm[8].x) * 800; const screenY = (0.5 - lm[8].y) * 600; 
             state.handX = screenX; state.handY = screenY; state.handZ = 150; 
 
             const iTip = Math.hypot(lm[8].x - wrist.x, lm[8].y - wrist.y);
@@ -489,27 +451,9 @@
         const posAttr = geometry.attributes.position;
         const colAttr = geometry.attributes.color;
         
-        // --- ZONE UPDATE LOGIC ---
-        // Reset markers
-        markers.forEach(m => m.classList.remove('active'));
-        
         if (state.isHandDetected) {
             statusBar.style.opacity = 1;
-            
-            // Calculate active zone
-            currentZone = 0; // Default center
-            if (state.handY > 100) { 
-                if (state.handX < -100) currentZone = 1; 
-                else if (state.handX > 100) currentZone = 2;
-            } else if (state.handY < -100) { 
-                if (state.handX < -100) currentZone = 3; 
-                else if (state.handX > 100) currentZone = 4;
-            }
-            
-            // Highlight active marker
-            markers[currentZone].classList.add('active');
-
-            // UI Update
+            // 
             if (state.isPinch) statusBar.innerText = "OPENING CARD";
             else if (state.isPeaceSign) statusBar.innerText = "❄️ SNOW MODE ❄️";
             else if (state.isThumbsUp) {
@@ -583,7 +527,7 @@
         }
         posAttr.needsUpdate = true; colAttr.needsUpdate = true; 
 
-        // 🖐️ SMART FOLLOW LOGIC
+        // 🖐️ 
         if (state.isHandDetected && state.targetFactor > 0.4) {
              mainGroup.position.x += (state.handX - mainGroup.position.x) * 0.1;
              mainGroup.position.y += ((state.handY + 50) - mainGroup.position.y) * 0.1;
@@ -626,15 +570,8 @@
             snowSystem.visible = false;
         }
 
-        // --- CARD OPENING LOGIC ---
-        if (state.isPinch && state.isHandDetected) {
-            // Change card image based on Current Zone
-            document.getElementById('card-image').src = cardImages[currentZone];
-            photoOverlay.classList.add('active');
-        }
-        else {
-            photoOverlay.classList.remove('active');
-        }
+        if (state.isPinch && state.isHandDetected) photoOverlay.classList.add('active');
+        else photoOverlay.classList.remove('active');
 
         renderer.render(scene, camera);
     }
